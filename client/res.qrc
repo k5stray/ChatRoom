@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>connect.jpeg</file>
+        <file>disconnect.jpeg</file>
+        <file>file.jpeg</file>
+        <file>picture.jpeg</file>
+        <file>icon.ico</file>
+        <file>picture.ico</file>
+    </qresource>
+</RCC>
