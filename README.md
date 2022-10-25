@@ -35,5 +35,7 @@ typedef struct {
 
 ## 4.参考
 
-Qt多线程网络通信: [https://www.bilibili.com/video/BV1LB4y1F7P7/?vd_source=21b2b7195bef3c50374169c309007961](https://www.bilibili.com/video/BV1LB4y1F7P7/?vd_source=21b2b7195bef3c50374169c309007961)
-黑马程序员-Linux网络编程: [https://www.bilibili.com/video/BV1iJ411S7UA/?vd_source=21b2b7195bef3c50374169c309007961](https://www.bilibili.com/video/BV1iJ411S7UA/?vd_source=21b2b7195bef3c50374169c309007961)
+##### 《Linux高性能服务器编程》-中国-游双
+##### Qt多线程网络通信: [https://www.bilibili.com/video/BV1LB4y1F7P7/?vd_source=21b2b7195bef3c50374169c309007961](https://www.bilibili.com/video/BV1LB4y1F7P7/?vd_source=21b2b7195bef3c50374169c309007961)
+##### 黑马程序员-Linux网络编程: [https://www.bilibili.com/video/BV1iJ411S7UA/?vd_source=21b2b7195bef3c50374169c309007961](https://www.bilibili.com/video/BV1iJ411S7UA/?vd_source=21b2b7195bef3c50374169c309007961)
+
