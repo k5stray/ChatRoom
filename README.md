@@ -25,13 +25,14 @@ typedef struct {
 ![](https://github.com/k5stray/ChatRoom/blob/main/image/%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F.jpg)
 
 #### 通信的数据流程:
-![](https://github.com/k5stray/ChatRoom/blob/main/image/cs.jpg)
+![](https://github.com/k5stray/ChatRoom/blob/main/image/cs2.jpg)
 
 #### 登录：
 ![](https://github.com/k5stray/ChatRoom/blob/main/image/%E7%99%BB%E5%BD%95.png)
 
 #### 聊天图
-![](https://github.com/k5stray/ChatRoom/blob/main/image/%E8%81%8A%E5%A4%A9.png)
+![](https://github.com/k5stray/ChatRoom/blob/main/image/chat1.png)
+![](https://github.com/k5stray/ChatRoom/blob/main/image/chat2.png)
 
 ## 4.参考
 
