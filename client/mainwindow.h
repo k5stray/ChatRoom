@@ -8,6 +8,7 @@
 
 #include "login_win.h"
 #include "message_head.h"
+#include "recv_file.h"
 
 #define NAME_SIZE 64
 
@@ -35,6 +36,8 @@ private slots:
 
     void on_record_textChanged();
 
+    void on_file_clicked();
+
 private:
     Ui::MainWindow *ui;
     QTcpSocket *m_tcp;
@@ -42,9 +45,15 @@ private:
     QLabel *connect_num;
     char m_name[NAME_SIZE];
     char m_peer_name[NAME_SIZE];
+    login_win *login;
+    recv_file *recv;
+    bool connect_stat;
+private:
     QString pack_message(QString name, QString mes, bool isMe);
     QString pack_pic(QString name, QString mes, bool isMe);
-    login_win *login;
+    QString pack_pre_file(QString name, bool isMe, QString filename, int filesize);
+    QString pack_file(QString name, bool isMe, QString filename, int filesize, QString mes);
+    QString pack_file_mes(QString filename, QString mes);
 
 
 signals:

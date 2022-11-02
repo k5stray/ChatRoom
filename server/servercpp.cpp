@@ -20,7 +20,7 @@ public:
 	void DoAccept();
 	void DoSendMessage(int sfd, message_head &curr_head);
 	void DoSendPicture(int sfd, message_head &curr_head);
-
+	void DoSendFile(int sfd, message_head &curr_head);
 private:
 
 	Server();
@@ -132,8 +132,8 @@ void Server::Run()
 						DoSendMessage(sfd, curr_head);
 					} else if(curr_head.m_type == m_picture) {
 						DoSendPicture(sfd, curr_head);
-					} else if(curr_head.m_type == m_status) {
-
+					} else if(curr_head.m_type == m_file) {
+						DoSendFile(sfd, curr_head);
 					}
 
 				}
@@ -239,6 +239,36 @@ void Server::DoSendPicture(int sfd, message_head &curr_head)
 
 	}						
 	bzero(buf, sizeof(buf));	
+}
+
+void Server::DoSendFile(int sfd, message_head &curr_head)
+{
+	int size = curr_head.size;
+
+	FILE *fp = fopen(curr_head.filename, "wb+");
+
+	while(size > 0) {
+		n = Read(sfd, buf, sizeof(buf));
+		fwrite(buf, n, 1, fp);
+		size -= n;							
+	}
+	fclose(fp);
+	for(int k=0;k<=maxi;k++) {
+		if(client[k] < 0 || client[k] == sfd) {
+			continue;
+		}
+
+		Write(client[k], (char*)&curr_head, sizeof(curr_head));
+
+		int filefd = open(curr_head.filename, O_RDONLY);
+			
+		struct stat st;
+		stat(curr_head.filename, &st);
+
+		sendfile(client[k], filefd, NULL, static_cast<size_t>(curr_head.size));
+
+	}						
+	bzero(buf, sizeof(buf));
 }
 
 int Server::connect_num = 0;

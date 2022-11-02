@@ -2,9 +2,10 @@
 #define MESSAGE_HEAD_H
 
 enum message_type {
-    mesage=0,
+    m_mesage=0,
     m_picture=1,
-    m_status=2
+    m_status=2,
+    m_file=3
 };
 
 typedef struct {

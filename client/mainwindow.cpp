@@ -20,6 +20,9 @@ MainWindow::MainWindow(QWidget *parent) :
     //登录界面
     login = new login_win;
 
+    //文件接收界面
+    recv = new recv_file;
+
     setWindowTitle("聊天窗口");
 
     m_tcp = new QTcpSocket;
@@ -40,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent) :
         connect_num->setText(QString::number((int)curr_head.connect_num));
         strcpy(m_peer_name, curr_head.name);
         QString tmp = "";
-        if(curr_head.m_type == message_type::mesage) {
+        if(curr_head.m_type == message_type::m_mesage) {
             QByteArray data = m_tcp->readAll();
             int total = curr_head.size - data.size();
             while(total > 0) {
@@ -68,9 +71,36 @@ MainWindow::MainWindow(QWidget *parent) :
             tmp = pack_pic(QString(m_peer_name), curr_head.filename, false);
         }  else if(curr_head.m_type == message_type::m_status) {
             connect_num->setText(QString::number(curr_head.connect_num));
+        } else if(curr_head.m_type == message_type::m_file) {
+            recv->init();
+            recv->setFileName(curr_head.filename);
+            recv->setOwn(curr_head.name);
+            recv->setFileSize((float)curr_head.size / 1024 / 1024);
+            int total = curr_head.size;
+            QByteArray data;
+            while(total > 0) {
+                if(m_tcp->waitForReadyRead()) {
+                    QByteArray n = m_tcp->read(total);
+                    data.append(n);
+                    total -= n.size();
+                }
+            }
+            tmp = pack_pre_file(curr_head.name, false, curr_head.filename, curr_head.size);
+            ui->record->append(tmp);
+            if(recv->exec() == QDialog::Accepted) {
+                QFile *file = new QFile(curr_head.filename);
+                file->open(QFile::WriteOnly);
+                file->write(data);
+                file->close();
+                tmp = pack_file_mes(curr_head.filename, "接收完成");
+            } else {             
+                tmp = pack_file_mes(curr_head.filename, "取消接收");
+            }
         }
 
-        ui->record->append(tmp);
+        if(curr_head.m_type != message_type::m_status) {
+            ui->record->append(tmp);
+        }
     });
 
     connect(m_tcp, &QTcpSocket::connected, this, [=](){
@@ -104,6 +134,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->statusBar->addWidget(new QLabel(")"));
 
     ui->picture->setIcon(QIcon(":/picture.ico"));
+    ui->file->setIcon(QIcon(":/file.ico"));
 
 }
 
@@ -123,7 +154,7 @@ void MainWindow::on_sendMassage_clicked()
     message_head curr_head;
 
     strcpy(curr_head.name, m_name);
-    curr_head.m_type = message_type::mesage;
+    curr_head.m_type = message_type::m_mesage;
     curr_head.size = msg.size();
     m_tcp->write((char*)&curr_head, sizeof(curr_head));
 
@@ -170,6 +201,35 @@ QString MainWindow::pack_pic(QString name, QString mes, bool isMe)
     return res;
 }
 
+QString MainWindow::pack_pre_file(QString name, bool isMe, QString filename, int filesize)
+{
+    QString align = "", color = "", res = "";
+    QDateTime current_date_time = QDateTime::currentDateTime();
+    QString cdt = current_date_time.toString("yyyy-MM-dd hh:mm:ss");
+    if(isMe) {
+        align = "right";
+        res = "<div align=\"right\"  position=\"absolute\"><table><tr><td>" + cdt + "    <strong>" + QString(name) + "</strong></td></tr></table></div>";
+    } else {
+        align = "left";
+        res = "<div align=\"left\"  position=\"absolute\"><table><tr><td><strong>" + QString(name)+ "</strong>    " + cdt + "</td></tr></table></div>";
+    }
+    res += "<div><table align=\""+ align+"\" style=\" width: fit-content; border:1px solid black;\"><tr><td align=\"center\"><img src=\"://file.png\"/></td></tr><tr><td align=\"center\"><font size=\"1\">文件</font></td></tr><tr><td><font size=\"2\">"+
+            filename +"("+ QString::number((float)filesize/1024/1024, 'f', 2) +"MB)</font></td></tr></table></div><br/>";
+    qDebug()<<"this----"<<align;
+    return res;
+}
+
+QString MainWindow::pack_file(QString name, bool isMe, QString filename, int filesize, QString mes)
+{
+    QString res = pack_pre_file(name, isMe, filename, filesize);
+    res += pack_file_mes(filename, mes);
+    return res;
+}
+
+QString MainWindow::pack_file_mes(QString filename, QString mes)
+{
+    return "<div align=\"center\"><table><tr><td><font color=\"blue\" size=\"3\">----文件\""+ filename +"\""+ mes +"----</font></td></tr></table></div>";
+}
 
 void MainWindow::on_message_returnPressed()
 {
@@ -228,4 +288,38 @@ bool MainWindow::checkLoginAxec()
         return true;
     }
     return false;
+}
+
+void MainWindow::on_file_clicked()
+{
+    QString filepath=QFileDialog::getOpenFileName();
+    if(filepath.isEmpty()) {
+        return;
+    }
+
+    QString filename = filepath.mid(filepath.lastIndexOf('/')+1);
+    if(m_tcp->state() != QAbstractSocket::ConnectedState) {
+        QString mes = pack_file_mes(filename, "发送失败:未连接到服务器！！");
+        ui->record->append(mes);
+        return;
+    }
+
+    QFile file(filepath);
+    QFileInfo info(filepath);
+    int fileSize = info.size();
+    file.open(QFile::ReadOnly);
+    message_head curr_head;
+    curr_head.m_type = message_type::m_file;
+    strcpy(curr_head.name, m_name);
+    strcpy(curr_head.filename, filename.toStdString().c_str());
+    curr_head.size = fileSize;
+    m_tcp->write((char*)&curr_head, sizeof(curr_head));
+
+    while(!file.atEnd()) {
+        QByteArray line = file.readLine();
+        m_tcp->write(line);
+    }
+    QString mes = pack_pre_file(curr_head.name, true, filename, curr_head.size);
+//    mes += pack_file_mes(filename, "已成功发送！");
+    ui->record->append(mes);
 }
