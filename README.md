@@ -10,7 +10,8 @@
 enum message_type {
     m_mesage=0,
     m_picture=1,
-    m_status=2
+    m_status=2,
+    m_file=3
 };
 
 typedef struct {
