@@ -28,19 +28,22 @@ SOURCES += \
         mainwindow.cpp \
     send_pic.cpp \
     login_win.cpp \
-    recv_file.cpp
+    recv_file.cpp \
+    rename.cpp
 
 HEADERS += \
         mainwindow.h \
     send_pic.h \
     login_win.h \
     message_head.h \
-    recv_file.h
+    recv_file.h \
+    rename.h
 
 FORMS += \
         mainwindow.ui \
     login_win.ui \
-    recv_file.ui
+    recv_file.ui \
+    rename.ui
 
 RESOURCES += \
     res.qrc

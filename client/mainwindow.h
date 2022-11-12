@@ -9,6 +9,7 @@
 #include "login_win.h"
 #include "message_head.h"
 #include "recv_file.h"
+#include "rename.h"
 
 #define NAME_SIZE 64
 
@@ -24,6 +25,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     bool checkLoginAxec();
+    void PrintMesaageHead(QString pre, const message_head& curr_head);
     ~MainWindow();
 
 private slots:
@@ -47,7 +49,10 @@ private:
     char m_peer_name[NAME_SIZE];
     login_win *login;
     recv_file *recv;
+    Rename    *rename;
+    message_head check_head;
     bool connect_stat;
+    QString Ip;
 private:
     QString pack_message(QString name, QString mes, bool isMe);
     QString pack_pic(QString name, QString mes, bool isMe);
@@ -58,7 +63,7 @@ private:
 
 signals:
     void send_pic(qintptr cfd, QString path, const char* m_name);
-
+    void CheckBack();
 };
 
 #endif // MAINWINDOW_H

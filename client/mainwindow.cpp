@@ -16,14 +16,16 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     
     this->setWindowIcon(QIcon(":/icon.ico"));
-
+    setWindowTitle("聊天窗口");
     //登录界面
     login = new login_win;
 
     //文件接收界面
     recv = new recv_file;
 
-    setWindowTitle("聊天窗口");
+    //昵称冲突
+    rename = new Rename;
+
 
     m_tcp = new QTcpSocket;
 
@@ -42,9 +44,27 @@ MainWindow::MainWindow(QWidget *parent) :
         m_tcp->read((char*)&curr_head, sizeof(curr_head));
         connect_num->setText(QString::number((int)curr_head.connect_num));
         strcpy(m_peer_name, curr_head.name);
+        if((strncmp(m_peer_name, "name", 4) == 0 || strncmp(m_peer_name, "rename", 6) == 0) && curr_head.size == -1) {
+            this->check_head.size = curr_head.size;
+            strcpy(this->check_head.name, curr_head.name);
+            this->check_head.connect_num = curr_head.connect_num;
+            emit CheckBack();
+            return;
+        }
+        if(strncmp(m_peer_name, m_name, strlen(m_name)) == 0) {
+            QByteArray data = m_tcp->read(curr_head.size);
+            int total = curr_head.size - data.size();
+            while(total > 0) {
+                if(m_tcp->waitForReadyRead()) {
+                    QByteArray tp = m_tcp->read(total);
+                    total -= tp.size();
+                }
+            }
+            return;
+        }
         QString tmp = "";
         if(curr_head.m_type == message_type::m_mesage) {
-            QByteArray data = m_tcp->readAll();
+            QByteArray data = m_tcp->read(curr_head.size);
             int total = curr_head.size - data.size();
             while(total > 0) {
                 if(m_tcp->waitForReadyRead()) {
@@ -58,10 +78,12 @@ MainWindow::MainWindow(QWidget *parent) :
         } else if(curr_head.m_type == message_type::m_picture) {
             QFile *file = new QFile(curr_head.filename);
             file->open(QFile::WriteOnly);
-            int total = curr_head.size;
+            QByteArray data = m_tcp->read(curr_head.size);
+            file->write(data, data.size());
+            int total = curr_head.size - data.size();
             while(total > 0) {
                 if(m_tcp->waitForReadyRead()) {
-                    QByteArray n = m_tcp->readAll();
+                    QByteArray n = m_tcp->read(total);
                     file->write(n, n.size());
                     total -= n.size();
                 }
@@ -76,8 +98,8 @@ MainWindow::MainWindow(QWidget *parent) :
             recv->setFileName(curr_head.filename);
             recv->setOwn(curr_head.name);
             recv->setFileSize((float)curr_head.size / 1024 / 1024);
-            int total = curr_head.size;
-            QByteArray data;
+            QByteArray data = m_tcp->read(curr_head.size);
+            int total = curr_head.size - data.size();
             while(total > 0) {
                 if(m_tcp->waitForReadyRead()) {
                     QByteArray n = m_tcp->read(total);
@@ -97,7 +119,6 @@ MainWindow::MainWindow(QWidget *parent) :
                 tmp = pack_file_mes(curr_head.filename, "取消接收");
             }
         }
-
         if(curr_head.m_type != message_type::m_status) {
             ui->record->append(tmp);
         }
@@ -106,7 +127,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_tcp, &QTcpSocket::connected, this, [=](){
 
         m_status->setPixmap(QPixmap(":/connect.jpeg").scaled(20, 20));
-        ui->record->append(QString(m_name) + " 已经成功连接到服务器...........\n");
+        ui->record->append("已成功连接到服务器...........\n");
 
     });
 
@@ -114,7 +135,7 @@ MainWindow::MainWindow(QWidget *parent) :
         m_tcp->close();
         m_tcp->deleteLater();
         m_status->setPixmap(QPixmap(":/disconnect.jpeg").scaled(20, 20));
-        ui->record->append("已经成功断开服务器连接...........\n");
+        ui->record->append("已断开服务器连接...........\n");
 
         t->exit();
         t->deleteLater();
@@ -143,6 +164,15 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::PrintMesaageHead(QString pre, const message_head& curr_head)
+{
+    qDebug()<<pre<<".message_type: "<<curr_head.m_type;
+    qDebug()<<pre<<".size: "<<curr_head.size;
+    qDebug()<<pre<<".connect_num: "<<curr_head.connect_num;
+    qDebug()<<pre<<".name: "<<curr_head.name;
+    qDebug()<<pre<<".filename: "<<curr_head.filename;
+    qDebug()<<"---------------------------";
+}
 
 void MainWindow::on_sendMassage_clicked()
 {
@@ -155,7 +185,7 @@ void MainWindow::on_sendMassage_clicked()
 
     strcpy(curr_head.name, m_name);
     curr_head.m_type = message_type::m_mesage;
-    curr_head.size = msg.size();
+    curr_head.size = msg.toUtf8().size();
     m_tcp->write((char*)&curr_head, sizeof(curr_head));
 
     m_tcp->write(msg.toUtf8());
@@ -215,7 +245,6 @@ QString MainWindow::pack_pre_file(QString name, bool isMe, QString filename, int
     }
     res += "<div><table align=\""+ align+"\" style=\" width: fit-content; border:1px solid black;\"><tr><td align=\"center\"><img src=\"://file.png\"/></td></tr><tr><td align=\"center\"><font size=\"1\">文件</font></td></tr><tr><td><font size=\"2\">"+
             filename +"("+ QString::number((float)filesize/1024/1024, 'f', 2) +"MB)</font></td></tr></table></div><br/>";
-    qDebug()<<"this----"<<align;
     return res;
 }
 
@@ -255,6 +284,7 @@ void MainWindow::on_picture_clicked()
     curr_head.m_type = message_type::m_picture;
     strcpy(curr_head.name, m_name);
     strcpy(curr_head.filename, filename.toStdString().c_str());
+    curr_head.filename[strlen(curr_head.filename)] = '\0';
     curr_head.size = fileSize;
     m_tcp->write((char*)&curr_head, sizeof(curr_head));
 
@@ -279,12 +309,31 @@ void MainWindow::on_record_textChanged()
 
 bool MainWindow::checkLoginAxec()
 {
+start:
     if(login->exec() == QDialog::Accepted) {
         QString ip, name;
+        this->Ip = ip;
         this->login->getIP_Name(ip, name);
         strcpy(m_name, name.toStdString().c_str());
         unsigned short port = PORT;
         m_tcp->connectToHost(ip, port);
+
+        //检测名字合法
+        message_head curr_head;
+        curr_head.m_type = message_type::m_status;
+        curr_head.size = 0;
+        strcpy(curr_head.name, m_name);
+        m_tcp->write((char*)&curr_head, sizeof(curr_head));
+
+        QEventLoop eventLoop;
+        connect(this, &MainWindow::CheckBack, &eventLoop, &QEventLoop::quit);
+        eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+        if(strcasecmp(this->check_head.name , "rename") == 0 && this->check_head.size == -1) {
+            this->rename->SetName(m_name);
+            this->rename->exec();
+            goto start;
+        }
         return true;
     }
     return false;

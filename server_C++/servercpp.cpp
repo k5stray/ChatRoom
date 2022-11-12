@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <fstream>
+#include <map>
 #include "message_head.h"
 #include "wrap.h"
 
@@ -21,6 +22,7 @@ public:
 	void DoSendMessage(int sfd, message_head &curr_head);
 	void DoSendPicture(int sfd, message_head &curr_head);
 	void DoSendFile(int sfd, message_head &curr_head);
+	void DoCheck(int sfd, message_head &curr_head);
 private:
 
 	Server();
@@ -44,6 +46,7 @@ private:
 	int client[FD_SETSIZE];		//客户端文件描述符数组
 	fd_set rset;			//文件描述符集合
 	fd_set allset;			//文件描述符集合备份
+	map<string, int> UserList;	//用户列表
 };
 
 Server::Server() 
@@ -121,6 +124,13 @@ void Server::Run()
 					close(sfd);
 					FD_CLR(sfd, &allset);
 					
+					for(map<string, int>::iterator it = UserList.begin();it != UserList.end();it++) {
+						if(it->second == sfd) {
+							UserList.erase(it);
+							break;
+						}
+					}
+
 					client[i]=-1;
 					if(connect_num > 0) {
 						connect_num--;
@@ -134,6 +144,8 @@ void Server::Run()
 						DoSendPicture(sfd, curr_head);
 					} else if(curr_head.m_type == m_file) {
 						DoSendFile(sfd, curr_head);
+					} else if(curr_head.m_type == m_status) {
+						DoCheck(sfd, curr_head);
 					}
 
 				}
@@ -199,6 +211,7 @@ void Server::UpdateConnect()
 
 void Server::DoSendMessage(int sfd, message_head &curr_head)
 {
+	curr_head.connect_num = connect_num;
 	n = Read(sfd, buf, sizeof(buf));
 	Write(STDOUT_FILENO, buf, n);
 	for(int k=0;k<=maxi;k++) {
@@ -206,15 +219,15 @@ void Server::DoSendMessage(int sfd, message_head &curr_head)
 			continue;
 		}
 		Write(client[k], (char*)&curr_head, sizeof(curr_head));
-		Write(client[k], buf, sizeof(buf));
+		Write(client[k], buf, n);
 	}
 	bzero(buf, sizeof(buf));	
 }
 
 void Server::DoSendPicture(int sfd, message_head &curr_head)
 {
+	curr_head.connect_num = connect_num;
 	int size = curr_head.size;
-
 	FILE *fp = fopen(curr_head.filename, "wb+");
 
 	while(size > 0) {
@@ -243,6 +256,7 @@ void Server::DoSendPicture(int sfd, message_head &curr_head)
 
 void Server::DoSendFile(int sfd, message_head &curr_head)
 {
+	curr_head.connect_num = connect_num;
 	int size = curr_head.size;
 
 	FILE *fp = fopen(curr_head.filename, "wb+");
@@ -271,8 +285,24 @@ void Server::DoSendFile(int sfd, message_head &curr_head)
 	bzero(buf, sizeof(buf));
 }
 
-int Server::connect_num = 0;
+void Server::DoCheck(int sfd, message_head &curr_head)
+{
+	message_head re_head;
+	re_head.size = -1;
+	re_head.m_type = m_status;
+	re_head.connect_num = connect_num;
+	if(UserList[curr_head.name] == 0) {
+		UserList[curr_head.name] = sfd;
+		strcpy(re_head.name, "name");
+		Write(sfd, (char*)&re_head, sizeof(re_head));
+	} else {
+		strcpy(re_head.name, "rename");
+		Write(sfd, (char*)&re_head, sizeof(re_head));
+	}
+	
+}
 
+int Server::connect_num = 0;
 
 int main()
 {
